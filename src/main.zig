@@ -5,7 +5,7 @@ const std = @import("std");
 const openMeteoUrl = "https://api.open-meteo.com/v1/forecast";
 const openMeteoLat = "52.5";
 const openMeteoLon = "8.3";
-const openMeteoParams = "&hourly=temperature_2m,weathercode&forecast_days=1&timezone=Europe%2FLondon";
+const openMeteoParams = "&hourly=temperature_2m,weathercode&forecast_hours=12&timezone=Europe%2FLondon";
 
 // JSON Structures for Open-Meteo API
 const HourlyForecast = struct {
@@ -73,6 +73,7 @@ fn fetchWeather(allocator: std.mem.Allocator, io: std.Io) !std.json.Parsed(Weath
     const body_slice = body.writer.buffer[0..body.writer.end];
     return try std.json.parseFromSlice(WeatherResponse, allocator, body_slice, .{
         .ignore_unknown_fields = true,
+        .allocate = .alloc_always,
     });
 }
 
@@ -88,22 +89,22 @@ pub fn main() !void {
     const weather = try fetchWeather(allocator, io);
     defer weather.deinit();
 
-    std.debug.print("Limerick, Ireland - Next 6 Hours Forecast\n", .{});
+    std.debug.print("Limerick, Ireland - Next 12 Hours Forecast\n", .{});
     std.debug.print("========================================\n", .{});
 
     const hourly = weather.value.hourly;
-    const count = @min(hourly.time.len, 6);
-
-    const labels = [_][]const u8{ "Now", "1hr", "2hr", "3hr", "4hr", "5hr" };
+    const count = @min(hourly.time.len, 12);
 
     var i: usize = 0;
     while (i < count) : (i += 1) {
         const temp = hourly.temperature_2m[i];
         const code = hourly.weathercode[i];
         const info = getWeatherInfo(code);
+        const time_str = hourly.time[i];
+        const local_time = if (time_str.len >= 16) time_str[11..16] else time_str;
 
         std.debug.print("{s} - {d:.1}°C - {s} {s}\n", .{
-            labels[i],
+            local_time,
             temp,
             info.condition,
             info.emoji,
