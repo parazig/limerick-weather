@@ -5,7 +5,7 @@ const std = @import("std");
 const openMeteoUrl = "https://api.open-meteo.com/v1/forecast";
 const openMeteoLat = "52.5";
 const openMeteoLon = "8.3";
-const openMeteoParams = "&hourly=temperature_2m,weathercode&forecast_hours=12&timezone=Europe%2FLondon";
+const openMeteoParams = "&hourly=temperature_2m,weathercode&forecast_hours=24&timezone=Europe%2FLondon";
 
 // JSON Structures for Open-Meteo API
 const HourlyForecast = struct {
@@ -89,11 +89,11 @@ pub fn main() !void {
     const weather = try fetchWeather(allocator, io);
     defer weather.deinit();
 
-    std.debug.print("Limerick, Ireland - Next 12 Hours Forecast\n", .{});
+    std.debug.print("Limerick, Ireland - Next 24 Hours Forecast\n", .{});
     std.debug.print("========================================\n", .{});
 
     const hourly = weather.value.hourly;
-    const count = @min(hourly.time.len, 12);
+    const count = @min(hourly.time.len, 24);
 
     var i: usize = 0;
     while (i < count) : (i += 1) {
@@ -110,6 +110,4 @@ pub fn main() !void {
             info.emoji,
         });
     }
-
-    std.debug.print("\nWeather emojis: ☀️ 🌤️ 🌧️ 🌨️ 🌩️\n", .{});
 }
