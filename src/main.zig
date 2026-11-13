@@ -82,13 +82,13 @@ pub fn main() !void {
         const wind_kmh = hourly.wind_speed_10m[i];
         const wind_dir = weathermap.windDirectionToCompass(hourly.wind_direction_10m[i]);
 
-        try out.interface.print("{s} - {d:5.1}°C - {d:4.0} km/h {s: >3} - {s} {s}\n", .{
+        try out.interface.print("{s} {d:5.1}°C {d:4.0} km/h {s: >3} {s} {s}\n", .{
             local_time,
             temp,
             wind_kmh,
             wind_dir,
-            info.condition,
             info.emoji,
+            info.condition,
         });
     }
 
