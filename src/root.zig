@@ -61,6 +61,21 @@ pub fn getEmojiForCode(code: i32) []const u8 {
     return getWeatherInfo(code).emoji;
 }
 
+/// Sixteen compass points, indexed by `round(degrees / 22.5) % 16`.
+const compass_points = [_][]const u8{
+    "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+    "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+};
+
+/// Map an Open-Meteo wind direction (degrees from true north) to the nearest
+/// of sixteen compass points. Any value is normalized into `[0, 360)` first, so
+/// negative or over-360 inputs are handled.
+pub fn windDirectionToCompass(degrees: f64) []const u8 {
+    const normalized = @mod(degrees, 360.0);
+    const index = @as(usize, @intFromFloat(@round(normalized / 22.5))) % compass_points.len;
+    return compass_points[index];
+}
+
 test "getEmojiForCode maps known codes" {
     try std.testing.expectEqualStrings("☀️", getEmojiForCode(0));
     try std.testing.expectEqualStrings("⛅", getEmojiForCode(2));
@@ -77,4 +92,27 @@ test "getWeatherInfo returns paired condition and emoji" {
     const info = getWeatherInfo(2);
     try std.testing.expectEqualStrings("partly cloudy", info.condition);
     try std.testing.expectEqualStrings("⛅", info.emoji);
+}
+
+test "windDirectionToCompass maps 16 compass points" {
+    try std.testing.expectEqualStrings("N", windDirectionToCompass(0));
+    try std.testing.expectEqualStrings("N", windDirectionToCompass(359));
+    try std.testing.expectEqualStrings("N", windDirectionToCompass(-1));
+    try std.testing.expectEqualStrings("NNE", windDirectionToCompass(22.5));
+    try std.testing.expectEqualStrings("NE", windDirectionToCompass(45));
+    try std.testing.expectEqualStrings("ENE", windDirectionToCompass(67.5));
+    try std.testing.expectEqualStrings("E", windDirectionToCompass(90));
+    try std.testing.expectEqualStrings("ESE", windDirectionToCompass(112.5));
+    try std.testing.expectEqualStrings("SE", windDirectionToCompass(135));
+    try std.testing.expectEqualStrings("SSE", windDirectionToCompass(157.5));
+    try std.testing.expectEqualStrings("S", windDirectionToCompass(180));
+    try std.testing.expectEqualStrings("SSW", windDirectionToCompass(202.5));
+    try std.testing.expectEqualStrings("SW", windDirectionToCompass(225));
+    try std.testing.expectEqualStrings("WSW", windDirectionToCompass(247.5));
+    try std.testing.expectEqualStrings("W", windDirectionToCompass(270));
+    try std.testing.expectEqualStrings("WNW", windDirectionToCompass(292.5));
+    try std.testing.expectEqualStrings("NW", windDirectionToCompass(315));
+    try std.testing.expectEqualStrings("NNW", windDirectionToCompass(337.5));
+    // Values wrap past 360 without changing the result.
+    try std.testing.expectEqualStrings("E", windDirectionToCompass(90 + 360));
 }

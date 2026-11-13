@@ -6,13 +6,15 @@ const weathermap = @import("limerick_weather");
 const openMeteoUrl = "https://api.open-meteo.com/v1/forecast";
 const openMeteoLat = "52.6638";
 const openMeteoLon = "-8.6267";
-const openMeteoParams = "&hourly=temperature_2m,weathercode&forecast_hours=24&timezone=Europe%2FDublin";
+const openMeteoParams = "&hourly=temperature_2m,weathercode,wind_speed_10m,wind_direction_10m&forecast_hours=24&timezone=Europe%2FDublin";
 
 // JSON Structures for Open-Meteo API
 const HourlyForecast = struct {
     time: []const []const u8,
     temperature_2m: []const f64,
     weathercode: []const i32,
+    wind_speed_10m: []const f64,
+    wind_direction_10m: []const f64,
 };
 
 const WeatherResponse = struct {
@@ -77,10 +79,14 @@ pub fn main() !void {
         const info = weathermap.getWeatherInfo(code);
         const time_str = hourly.time[i];
         const local_time = if (time_str.len >= 16) time_str[11..16] else time_str;
+        const wind_kmh = hourly.wind_speed_10m[i];
+        const wind_dir = weathermap.windDirectionToCompass(hourly.wind_direction_10m[i]);
 
-        try out.interface.print("{s} - {d:.1}°C - {s} {s}\n", .{
+        try out.interface.print("{s} - {d:5.1}°C - {d:4.0} km/h {s: >3} - {s} {s}\n", .{
             local_time,
             temp,
+            wind_kmh,
+            wind_dir,
             info.condition,
             info.emoji,
         });
