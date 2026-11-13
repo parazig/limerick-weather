@@ -67,13 +67,50 @@ const compass_points = [_][]const u8{
     "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
 };
 
-/// Map an Open-Meteo wind direction (degrees from true north) to the nearest
-/// of sixteen compass points. Any value is normalized into `[0, 360)` first, so
-/// negative or over-360 inputs are handled.
-pub fn windDirectionToCompass(degrees: f64) []const u8 {
+/// Directional arrow emoji for each compass point, index-aligned with
+/// `compass_points`. The eight semi-ordinal points (NNE, ENE, ...) reuse the
+/// arrow of their dominant cardinal direction, since no arrow glyph exists for
+/// the 22.5° off-cardinal bearings.
+const wind_arrows = [_][]const u8{
+    "⬆️", "⬆️", "↗️", "➡️", "➡️", "➡️", "↘️", "⬇️",
+    "⬇️", "⬇️", "↙️", "⬅️", "⬅️", "⬅️", "↖️", "↖️",
+};
+
+/// Index into `compass_points`/`wind_arrows` for a bearing in degrees from
+/// true north. Normalized into `[0, 360)` first, so negative or over-360 inputs
+/// are handled.
+fn compassIndex(degrees: f64) usize {
     const normalized = @mod(degrees, 360.0);
-    const index = @as(usize, @intFromFloat(@round(normalized / 22.5))) % compass_points.len;
-    return compass_points[index];
+    return @as(usize, @intFromFloat(@round(normalized / 22.5))) % compass_points.len;
+}
+
+/// Map an Open-Meteo wind direction (the degrees the wind comes *from*) to the
+/// nearest of sixteen compass points. Open-Meteo reports the source bearing, so
+/// `0` means a wind from the north. See `windDirectionToCompassToward` for the
+/// direction the wind blows *toward*.
+pub fn windDirectionToCompass(degrees: f64) []const u8 {
+    return compass_points[compassIndex(degrees)];
+}
+
+/// Directional arrow emoji for the compass point the wind comes *from*. See
+/// `windDirectionToCompass` and `wind_arrows`. The returned slice points at a
+/// string literal, so it is safe to store or print after the call returns.
+pub fn windArrowForDegrees(degrees: f64) []const u8 {
+    return wind_arrows[compassIndex(degrees)];
+}
+
+/// Map an Open-Meteo wind direction to the compass point the wind blows
+/// *toward* — the source bearing rotated 180°. This is the direction of wind
+/// travel, opposite of `windDirectionToCompass`.
+pub fn windDirectionToCompassToward(degrees: f64) []const u8 {
+    return compass_points[compassIndex(@mod(degrees + 180.0, 360.0))];
+}
+
+/// Directional arrow emoji for the compass point the wind blows *toward*.
+/// Opposite of `windArrowForDegrees`. The returned slice points at a string
+/// literal, so it is safe to store or print after the call returns.
+pub fn windArrowForDegreesToward(degrees: f64) []const u8 {
+    return wind_arrows[compassIndex(@mod(degrees + 180.0, 360.0))];
 }
 
 test "getEmojiForCode maps known codes" {
@@ -115,4 +152,33 @@ test "windDirectionToCompass maps 16 compass points" {
     try std.testing.expectEqualStrings("NNW", windDirectionToCompass(337.5));
     // Values wrap past 360 without changing the result.
     try std.testing.expectEqualStrings("E", windDirectionToCompass(90 + 360));
+}
+
+test "windDirectionWithArrow prepends an arrow to each compass point" {
+    try std.testing.expectEqualStrings("⬆️", windArrowForDegrees(0));
+    try std.testing.expectEqualStrings("⬆️", windArrowForDegrees(359));
+    try std.testing.expectEqualStrings("⬆️", windArrowForDegrees(-1));
+    try std.testing.expectEqualStrings("↗️", windArrowForDegrees(45));
+    try std.testing.expectEqualStrings("➡️", windArrowForDegrees(67.5));
+    try std.testing.expectEqualStrings("➡️", windArrowForDegrees(90));
+    try std.testing.expectEqualStrings("↘️", windArrowForDegrees(135));
+    try std.testing.expectEqualStrings("⬇️", windArrowForDegrees(180));
+    try std.testing.expectEqualStrings("↙️", windArrowForDegrees(225));
+    try std.testing.expectEqualStrings("⬅️", windArrowForDegrees(270));
+    try std.testing.expectEqualStrings("↖️", windArrowForDegrees(315));
+}
+
+test "toward variants flip the source bearing by 180°" {
+    // A wind *from* the north blows *toward* the south.
+    try std.testing.expectEqualStrings("S", windDirectionToCompassToward(0));
+    try std.testing.expectEqualStrings("⬇️", windArrowForDegreesToward(0));
+    // A wind *from* the northeast blows *toward* the southwest.
+    try std.testing.expectEqualStrings("SW", windDirectionToCompassToward(45));
+    try std.testing.expectEqualStrings("↙️", windArrowForDegreesToward(45));
+    // A wind *from* the west blows *toward* the east.
+    try std.testing.expectEqualStrings("E", windDirectionToCompassToward(270));
+    try std.testing.expectEqualStrings("➡️", windArrowForDegreesToward(270));
+    // Opposite source bearings yield opposite toward directions.
+    try std.testing.expectEqualStrings("S", windDirectionToCompassToward(0));
+    try std.testing.expectEqualStrings("N", windDirectionToCompassToward(180));
 }
